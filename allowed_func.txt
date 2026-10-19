@@ -1,0 +1,12 @@
+Purpose	                                |MiniLibX in C	      |Pygame in Python
+Initialize graphics	                    | mlx_init()	      |pygame.init()
+Create a window	                        |mlx_new_window()	  |pygame.display.set_mode()
+Set window title	             |Passed to mlx_new_window()  |pygame.display.set_caption()
+Draw a pixel	                        |mlx_pixel_put()	  |screen.set_at()
+Draw a rectangle	             |No direct basic equivalent  |pygame.draw.rect()
+Create an image	                        |mlx_new_image()	  |pygame.Surface()
+Display an image	             |mlx_put_image_to_window()	  |screen.blit()
+Display the drawing	                    |MLX drawing calls	  |pygame.display.flip() # there is no equivalent
+Handle keyboard/mouse events   |mlx_key_hook(), mlx_mouse_hook()	|pygame.event.get()
+Main event loop	                        |mlx_loop()	          |A while loop
+Close graphics	                 |Destroy/cleanup functions	  |pygame.quit()
