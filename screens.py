@@ -8,6 +8,8 @@ import pygame
 class State(Enum):
     MENU = auto()
     PLAYING = auto()
+    GAME_OVER = auto()
+    VICTORY = auto()
     HIGHSCORES = auto()
     INSTRUCTIONS = auto()
     EXIT = auto()

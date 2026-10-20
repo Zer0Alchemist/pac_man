@@ -92,4 +92,4 @@ def parse_config(file : str) :
     
 
 
-print(parse_config("config.json"))
+# print(parse_config("config.json"))
