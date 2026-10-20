@@ -72,8 +72,9 @@ class GameScreen(Screen):
         self.maze_loader = maze_loader
         self.session = Session(lives=config["lives"])
         self.paused = False
-        self.label_font = pygame.font.SysFont("monospace", 22, bold=True)
-        self.value_font = pygame.font.SysFont("monospace", 28, bold=True)
+        font_path = "assets/fonts/PressStart2P-Regular.ttf"
+        self.label_font = pygame.font.Font(font_path, 14)
+        self.value_font = pygame.font.Font(font_path, 12)
         self.high_score = 0        # later: best score from the highscore file
         self.level = self.build_level()
 
@@ -185,13 +186,22 @@ class GameScreen(Screen):
             surf.fill(PATTERN_COLOR, edge_rect(edge, cw, ch, pad, line))
         return surf
     
-    def draw_stat(self, surface: pygame.Surface, label: str, value: str,
-                  center_x: int, value_color=TEXT_WHITE) -> None:
-            """A label with its value under it, both centered on center_x."""
-            label_img = self.label_font.render(label, True, TEXT_WHITE)
-            value_img = self.value_font.render(value, True, value_color)
-            surface.blit(label_img, label_img.get_rect(midtop=(center_x, 6)))
-            surface.blit(value_img, value_img.get_rect(midtop=(center_x, 32)))
+    def draw_stat(
+    self,
+    surface: pygame.Surface,
+    label: str,
+    value: str,
+    center_x: int,
+    value_color: tuple[int, int, int] = TEXT_WHITE,
+    ) -> None:
+        label_img = self.label_font.render(label, False, TEXT_WHITE)
+        value_img = self.value_font.render(value, False, value_color)
+
+        label_rect = label_img.get_rect(midtop=(center_x, 10))
+        value_rect = value_img.get_rect(midtop=(center_x, 30))
+
+        surface.blit(label_img, label_rect)
+        surface.blit(value_img, value_rect)
     
     def draw_life_icon(self, surface: pygame.Surface,
                     center: tuple[int, int], radius: int) -> None:
@@ -211,11 +221,24 @@ class GameScreen(Screen):
         time_color = ALERT_RED if seconds <= 10 else TEXT_WHITE
 
         # top bar
-        self.draw_stat(surface, "1UP", str(s.score), width // 6)
-        self.draw_stat(surface, "HIGH SCORE",
-                    str(max(self.high_score, s.score)), width // 2)
-        self.draw_stat(surface, "TIME", str(seconds), width * 5 // 6,
-                    time_color)
+        self.draw_stat(
+            surface, "1UP", f"{s.score:02d}", width // 6
+        )
+
+        self.draw_stat(
+            surface,
+            "HIGH SCORE",
+            f"{max(self.high_score, s.score):02d}",
+            width // 2,
+        )
+
+        self.draw_stat(
+            surface,
+            "TIME",
+            str(seconds),
+            width * 5 // 6,
+            time_color,
+        )
 
         # bottom bar: lives on the left, level on the right
         y = height - self.HUD_BOTTOM // 2
@@ -239,4 +262,3 @@ class GameScreen(Screen):
                     self.origin[1] - self.maze_pad))
         self.draw_hud(surface)
 
-    
