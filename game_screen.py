@@ -6,13 +6,17 @@ from levels import Session , Level , Result
 
 from levels import CLOSED, EAST, NORTH, SOUTH, WEST, Level, Result, Session
 
-# from level import EAST, NORTH, SOUTH, WEST, Level, Result, Session
 
 BG_COLOR = (0, 0, 0)
-WALL_COLOR = (33, 33, 222)         # classic Pac-Man blue
-PATTERN_FILL = (20, 20, 90)        # inside of the 42
-PATTERN_COLOR = (255, 184, 222)    # pink outline of the 42
-MARGIN = 20
+WALL_OUTER = (30, 50, 210)        # outer blue line
+WALL_INNER = (90, 150, 255)       # lighter inner line
+PATTERN_FILL = (10, 10, 70)       # inside of the 42
+PATTERN_COLOR = (255, 184, 222)   # pink, like the ghost-house gate
+PACGUM_COLOR = (255, 184, 174)    # peach, for later
+TEXT_WHITE = (255, 255, 255)
+PAC_YELLOW = (255, 255, 0)
+ALERT_RED = (255, 40, 40)
+MARGIN = 10
 
 Edge = tuple[str, int, int]
 
@@ -59,7 +63,8 @@ def edge_rect(edge: Edge, cw: int, ch: int, pad: int,
         return pygame.Rect(px - half, py - half, cw + thickness, thickness)
     return pygame.Rect(px - half, py - half, thickness, ch + thickness)
 class GameScreen(Screen):
-    HUD_HEIGHT = 50
+    HUD_TOP = 70
+    HUD_BOTTOM = 56
 
     def __init__(self, size: tuple[int, int], config : dict , maze_loader) -> None:
         self.size = size
@@ -67,9 +72,17 @@ class GameScreen(Screen):
         self.maze_loader = maze_loader
         self.session = Session(lives=config["lives"])
         self.paused = False
-        self.font = pygame.font.SysFont("monospace", 22, bold=True)
+        self.label_font = pygame.font.SysFont("monospace", 22, bold=True)
+        self.value_font = pygame.font.SysFont("monospace", 28, bold=True)
+        self.high_score = 0        # later: best score from the highscore file
         self.level = self.build_level()
 
+    def maze_area(self) -> pygame.Rect:
+        """Free rectangle between the top and bottom HUD bars."""
+        width, height = self.size
+        return pygame.Rect(MARGIN, self.HUD_TOP + MARGIN,
+                        width - 2 * MARGIN,
+                        height - self.HUD_TOP - self.HUD_BOTTOM - 2 * MARGIN)
     # ---------- level flow ----------
 
     def build_level(self) -> Level:
@@ -129,31 +142,41 @@ class GameScreen(Screen):
     def render_maze(self, level: Level) -> pygame.Surface:
         width, height = self.size
         cw = max(8, (width - 2 * MARGIN) // level.cols)
-        ch = max(8, (height - self.HUD_HEIGHT - 2 * MARGIN) // level.rows)
+        ch = max(
+            8,
+            (height - self.HUD_TOP - self.HUD_BOTTOM - 2 * MARGIN)
+            // level.rows
+        )
         t = max(4, min(cw, ch) // 5 // 2 * 2)   # wall thickness (even number)
         o = max(1, t // 5)
         pad = t // 2 + 1
 
         # kept for later: entities will use these
-        self.cell_w, self.cell_h = cw, ch
+        area = self.maze_area()
+        cw = max(8, area.width // level.cols)
+        ch = max(8, area.height // level.rows)
+
         self.maze_pad = pad
-        self.origin = (
-            (width - cw * level.cols) // 2,
-            self.HUD_HEIGHT
-            + (height - self.HUD_HEIGHT - ch * level.rows) // 2,
-        )
+        self.origin = (area.x + (area.width - cw * level.cols) // 2,
+               area.y + (area.height - ch * level.rows) // 2)
 
         surf = pygame.Surface((cw * level.cols + 2 * pad,
                             ch * level.rows + 2 * pad))
         surf.fill(BG_COLOR)
         walls, outline = collect_edges(level)
 
+        t = max(6, min(cw, ch) // 5 // 2 * 2)     # use `cell` in the square version
+        o = max(1, t // 6)
         rects = [edge_rect(edge, cw, ch, pad, t) for edge in walls]
-        for rect in rects:
-            pygame.draw.rect(surf, WALL_COLOR, rect, border_radius=t // 2)
-        for rect in rects:
-            pygame.draw.rect(surf, BG_COLOR, rect.inflate(-2 * o, -2 * o),
+
+        for rect in rects:                         # 1) outer dark blue
+            pygame.draw.rect(surf, WALL_OUTER, rect, border_radius=t // 2)
+        for rect in rects:                         # 2) lighter inner line
+            pygame.draw.rect(surf, WALL_INNER, rect.inflate(-2 * o, -2 * o),
                             border_radius=max(1, t // 2 - o))
+        for rect in rects:                         # 3) black core
+            pygame.draw.rect(surf, BG_COLOR, rect.inflate(-4 * o, -4 * o),
+                            border_radius=max(1, t // 2 - 2 * o))
 
         for x, y in level.pattern_cells:
             surf.fill(PATTERN_FILL, (pad + x * cw, pad + y * ch, cw, ch))
@@ -161,6 +184,53 @@ class GameScreen(Screen):
         for edge in outline:
             surf.fill(PATTERN_COLOR, edge_rect(edge, cw, ch, pad, line))
         return surf
+    
+    def draw_stat(self, surface: pygame.Surface, label: str, value: str,
+                  center_x: int, value_color=TEXT_WHITE) -> None:
+            """A label with its value under it, both centered on center_x."""
+            label_img = self.label_font.render(label, True, TEXT_WHITE)
+            value_img = self.value_font.render(value, True, value_color)
+            surface.blit(label_img, label_img.get_rect(midtop=(center_x, 6)))
+            surface.blit(value_img, value_img.get_rect(midtop=(center_x, 32)))
+    
+    def draw_life_icon(self, surface: pygame.Surface,
+                    center: tuple[int, int], radius: int) -> None:
+        """Small Pac-Man facing right: a yellow disc with a mouth wedge."""
+        cx, cy = center
+        pygame.draw.circle(surface, PAC_YELLOW, center, radius)
+        mouth = [center,
+                (cx + radius + 1, cy - int(radius * 0.7)),
+                (cx + radius + 1, cy + int(radius * 0.7))]
+        pygame.draw.polygon(surface, BG_COLOR, mouth)
+
+    def draw_hud(self, surface: pygame.Surface) -> None:
+        s = self.session
+        width, height = self.size
+        total_levels = len(self.config["level"])
+        seconds = int(max(0, self.level.time_left))
+        time_color = ALERT_RED if seconds <= 10 else TEXT_WHITE
+
+        # top bar
+        self.draw_stat(surface, "1UP", str(s.score), width // 6)
+        self.draw_stat(surface, "HIGH SCORE",
+                    str(max(self.high_score, s.score)), width // 2)
+        self.draw_stat(surface, "TIME", str(seconds), width * 5 // 6,
+                    time_color)
+
+        # bottom bar: lives on the left, level on the right
+        y = height - self.HUD_BOTTOM // 2
+        radius = self.HUD_BOTTOM // 3
+        if s.lives <= 6:
+            for i in range(s.lives):
+                self.draw_life_icon(surface, (30 + radius + i * (2 * radius + 10), y), radius)
+        else:                                   # cheat mode can give many lives
+            self.draw_life_icon(surface, (30 + radius, y), radius)
+            text = self.value_font.render(f"x{s.lives}", True, TEXT_WHITE)
+            surface.blit(text, text.get_rect(midleft=(30 + 2 * radius + 10, y)))
+
+        level_text = self.value_font.render(
+            f"LEVEL {s.level_index + 1}/{total_levels}", True, TEXT_WHITE)
+        surface.blit(level_text, level_text.get_rect(midright=(width - 30, y)))
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill((0, 0, 0))
@@ -169,10 +239,4 @@ class GameScreen(Screen):
                     self.origin[1] - self.maze_pad))
         self.draw_hud(surface)
 
-    def draw_hud(self, surface: pygame.Surface) -> None:
-        s = self.session
-        total_levels = len(self.config["level"])
-        text = (f"Score: {s.score}   Lives: {s.lives}   "
-                f"Level: {s.level_index + 1}/{total_levels}   "
-                f"Time: {int(max(0, self.level.time_left))}")
-        surface.blit(self.font.render(text, True, (255, 255, 255)), (20, 12))
+    
