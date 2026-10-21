@@ -1,18 +1,15 @@
 from screens import Screen , State
 import pygame
 from typing import Optional
-from levels import Session , Level , Result
-
-
-from levels import CLOSED, EAST, NORTH, SOUTH, WEST, Level, Result, Session
+from levels import Session , Level , Result, EAST, NORTH, SOUTH, WEST, Level, Result, Session
 
 
 BG_COLOR = (0, 0, 0)
 WALL_OUTER = (30, 50, 210)        # outer blue line
 WALL_INNER = (90, 150, 255)       # lighter inner line
-PATTERN_FILL = (10, 10, 70)       # inside of the 42
+PATTERN_FILL = (24, 24, 26)     # inside of the 42
 PATTERN_COLOR = (255, 184, 222)   # pink, like the ghost-house gate
-PACGUM_COLOR = (255, 184, 174)    # peach, for later
+PACGUM_COLOR = (255, 255, 0)    # peach, for later
 TEXT_WHITE = (255, 255, 255)
 PAC_YELLOW = (255, 255, 0)
 ALERT_RED = (255, 40, 40)
@@ -62,6 +59,7 @@ def edge_rect(edge: Edge, cw: int, ch: int, pad: int,
     if kind == "h":
         return pygame.Rect(px - half, py - half, cw + thickness, thickness)
     return pygame.Rect(px - half, py - half, thickness, ch + thickness)
+
 class GameScreen(Screen):
     HUD_TOP = 70
     HUD_BOTTOM = 56
@@ -84,6 +82,7 @@ class GameScreen(Screen):
         return pygame.Rect(MARGIN, self.HUD_TOP + MARGIN,
                         width - 2 * MARGIN,
                         height - self.HUD_TOP - self.HUD_BOTTOM - 2 * MARGIN)
+    
     # ---------- level flow ----------
 
     def build_level(self) -> Level:
@@ -124,6 +123,17 @@ class GameScreen(Screen):
             return self.advance_level()
         elif event.key == pygame.K_l:
             return self.lose_life()
+        elif event.key == pygame.K_e:           # eat one pacgum
+            if self.level.pacgums:
+                x, y = next(iter(self.level.pacgums))
+                self.collect_at(x, y)
+        elif event.key == pygame.K_s:           # eat one super-pacgum
+            if self.level.super_pacgums:
+                x, y = next(iter(self.level.super_pacgums))
+                self.collect_at(x, y)
+        elif event.key == pygame.K_a:           # eat everything: level should end
+            for x, y in list(self.level.pacgums):
+                self.collect_at(x, y)
         return None
 
     def update(self, dt: float) -> Optional[State]:
@@ -141,33 +151,25 @@ class GameScreen(Screen):
     MARGIN = 10      # smaller margin, covers more of the screen
 
     def render_maze(self, level: Level) -> pygame.Surface:
-        width, height = self.size
-        cw = max(8, (width - 2 * MARGIN) // level.cols)
-        ch = max(
-            8,
-            (height - self.HUD_TOP - self.HUD_BOTTOM - 2 * MARGIN)
-            // level.rows
-        )
-        t = max(4, min(cw, ch) // 5 // 2 * 2)   # wall thickness (even number)
-        o = max(1, t // 5)
-        pad = t // 2 + 1
-
-        # kept for later: entities will use these
         area = self.maze_area()
         cw = max(8, area.width // level.cols)
         ch = max(8, area.height // level.rows)
+        t = max(6, min(cw, ch) // 5 // 2 * 2)     # wall thickness (even number)
+        o = max(1, t // 6)
+        pad = t // 2 + 1
 
+        self.cell_w, self.cell_h = cw, ch
         self.maze_pad = pad
         self.origin = (area.x + (area.width - cw * level.cols) // 2,
-               area.y + (area.height - ch * level.rows) // 2)
+                    area.y + (area.height - ch * level.rows) // 2)
 
         surf = pygame.Surface((cw * level.cols + 2 * pad,
                             ch * level.rows + 2 * pad))
         surf.fill(BG_COLOR)
         walls, outline = collect_edges(level)
 
-        t = max(6, min(cw, ch) // 5 // 2 * 2)     # use `cell` in the square version
-        o = max(1, t // 6)
+        # t = max(6, min(cw, ch) // 5 // 2 * 2)     # use `cell` in the square version
+        # o = max(1, t // 6)
         rects = [edge_rect(edge, cw, ch, pad, t) for edge in walls]
 
         for rect in rects:                         # 1) outer dark blue
@@ -256,9 +258,32 @@ class GameScreen(Screen):
         surface.blit(level_text, level_text.get_rect(midright=(width - 30, y)))
 
     def draw(self, surface: pygame.Surface) -> None:
-        surface.fill((0, 0, 0))
+        surface.fill(BG_COLOR)                      # this line clears the menu
         surface.blit(self.maze_surface,
                     (self.origin[0] - self.maze_pad,
                     self.origin[1] - self.maze_pad))
+        self.draw_pacgums(surface)
         self.draw_hud(surface)
+
+    def collect_at(self, x: int, y: int) -> None:
+        """Call this when the player enters cell (x, y)."""
+        kind = self.level.eat_at(x, y)
+        if kind == "pacgum":
+            self.session.score += self.config["points_per_pacgum"]
+        elif kind == "super":
+            self.session.score += self.config["points_per_super_pacgum"]
+
+    def cell_center(self, x: int, y: int) -> tuple[int, int]:
+        return (self.origin[0] + x * self.cell_w + self.cell_w // 2,
+                self.origin[1] + y * self.cell_h + self.cell_h // 2)
+
+    def draw_pacgums(self, surface: pygame.Surface) -> None:
+        unit = min(self.cell_w, self.cell_h)
+        for x, y in self.level.pacgums:
+            pygame.draw.circle(surface, PACGUM_COLOR,
+                            self.cell_center(x, y), max(2, unit // 10))
+        if pygame.time.get_ticks() // 250 % 2 == 0:      # super-pacgums blink
+            for x, y in self.level.super_pacgums:
+                pygame.draw.circle(surface, PACGUM_COLOR,
+                                self.cell_center(x, y), max(4, unit // 4))
 
