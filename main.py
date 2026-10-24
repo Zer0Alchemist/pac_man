@@ -73,9 +73,9 @@ def main() -> None:
         pac_man.run()
     except KeyboardInterrupt:
         return 0
-    except Exception as error:
-        print(f"Error: {error}", file=sys.stderr)
-        return 1
+    # except Exception as error:
+    #     print(f"Error: {error}", file=sys.stderr)
+    #     return 1
     return 0
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from screens import Screen , State
 import pygame
 from typing import Optional
 from levels import Session , Level , Result, EAST, NORTH, SOUTH, WEST, Level, Result, Session
+from maze_loader import MazeError
 
 
 BG_COLOR = (0, 0, 0)
@@ -97,7 +98,11 @@ class GameScreen(Screen):
         self.session.level_index += 1
         if self.session.level_index >= len(self.config["level"]):
             return State.VICTORY
-        self.level = self.build_level()
+        try:
+            self.level = self.build_level()
+        except MazeError as error:
+            print(f"Cannot build the next level: {error}")
+            return State.MENU
         return None
 
     def lose_life(self, time_up: bool = False) -> Optional[State]:

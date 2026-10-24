@@ -1,5 +1,4 @@
 from typing import Any, Optional
-
 import mazegenerator
 
 
@@ -22,14 +21,49 @@ def validate(grid: Any) -> list[list[int]]:
     return grid
 
 
+# class MazeLoader:
+#     def generate(self, level_cfg: dict[str, int],
+#                  seed: Optional[int]) -> list[list[int]]:
+#         try:
+#             # TODO: pass width/height/seed/PERFECT=False here.
+#             # I don't know this package's constructor, so check its README.
+#             generator = mazegenerator.MazeGenerator()
+#             grid = generator.maze
+#         except Exception as error:
+#             raise MazeError(f"maze generator failed: {error}") from error
+#         return validate(grid)
+
+import random
+from typing import Optional
+
+import mazegenerator
+
+
+import random
+from typing import Optional
+
+import mazegenerator
+
+
 class MazeLoader:
     def generate(self, level_cfg: dict[str, int],
                  seed: Optional[int]) -> list[list[int]]:
+        width = level_cfg["width"]
+        height = level_cfg["height"]
+        if seed is None:                        # levels after the first
+            seed = random.randrange(2**31)
         try:
-            # TODO: pass width/height/seed/PERFECT=False here.
-            # I don't know this package's constructor, so check its README.
-            generator = mazegenerator.MazeGenerator()
+            generator = mazegenerator.MazeGenerator(
+                size=(width, height),
+                perfect=False,                  # required by the subject
+                seed=seed,
+            )
             grid = generator.maze
-        except Exception as error:
+        except (Exception, SystemExit) as error:
             raise MazeError(f"maze generator failed: {error}") from error
-        return validate(grid)
+
+        grid = validate(grid)
+        if len(grid[0]) != width or len(grid) != height:
+            print(f"Warning: asked for {width}x{height}, "
+                  f"got {len(grid[0])}x{len(grid)}")
+        return grid
