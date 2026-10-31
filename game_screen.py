@@ -1,7 +1,7 @@
 from screens import Screen , State
 import pygame
 from typing import Optional
-from levels import Session , Level , Result, EAST, NORTH, SOUTH, WEST, Level, Result, Session
+from levels import Session, Level, Result, EAST, NORTH, SOUTH, WEST, Level, Result, Session
 from maze_loader import MazeError
 
 
@@ -61,11 +61,13 @@ def edge_rect(edge: Edge, cw: int, ch: int, pad: int,
         return pygame.Rect(px - half, py - half, cw + thickness, thickness)
     return pygame.Rect(px - half, py - half, thickness, ch + thickness)
 
+
 class GameScreen(Screen):
     HUD_TOP = 70
     HUD_BOTTOM = 56
 
-    def __init__(self, size: tuple[int, int], config : dict , maze_loader) -> None:
+    def __init__(self, size: tuple[int, int], config: dict,
+                 maze_loader) -> None:
         self.size = size
         self.config = config
         self.maze_loader = maze_loader
@@ -83,7 +85,7 @@ class GameScreen(Screen):
         return pygame.Rect(MARGIN, self.HUD_TOP + MARGIN,
                         width - 2 * MARGIN,
                         height - self.HUD_TOP - self.HUD_BOTTOM - 2 * MARGIN)
-    
+
     # ---------- level flow ----------
 
     def build_level(self) -> Level:

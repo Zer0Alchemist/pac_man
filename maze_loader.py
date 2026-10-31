@@ -41,7 +41,6 @@ import mazegenerator
 
 import random
 from typing import Optional
-
 import mazegenerator
 
 
