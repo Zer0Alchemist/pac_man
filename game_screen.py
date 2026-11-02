@@ -19,6 +19,8 @@ MARGIN = 10
 Edge = tuple[str, int, int]
 
 
+PATTERN_SCALE = 0.6      # 1.0 = fills its cells, lower = smaller 42
+
 def collect_edges(level: Level) -> tuple[set[Edge], set[Edge]]:
     """Return (normal wall edges, outline edges of the 42)."""
     walls: set[Edge] = set()
@@ -159,8 +161,8 @@ class GameScreen(Screen):
 
     def render_maze(self, level: Level) -> pygame.Surface:
         area = self.maze_area()
-        cw = max(8, area.width // level.cols)
-        ch = max(8, area.height // level.rows)
+        cw = ch = max(8, min(area.width // level.cols,
+                             area.height // level.rows))
         t = max(6, min(cw, ch) // 5 // 2 * 2)     # wall thickness (even number)
         o = max(1, t // 6)
         pad = t // 2 + 1
@@ -173,20 +175,18 @@ class GameScreen(Screen):
         surf = pygame.Surface((cw * level.cols + 2 * pad,
                             ch * level.rows + 2 * pad))
         surf.fill(BG_COLOR)
+        
         walls, outline = collect_edges(level)
-
-        # t = max(6, min(cw, ch) // 5 // 2 * 2)     # use `cell` in the square version
-        # o = max(1, t // 6)
         rects = [edge_rect(edge, cw, ch, pad, t) for edge in walls]
 
         for rect in rects:                         # 1) outer dark blue
             pygame.draw.rect(surf, WALL_OUTER, rect, border_radius=t // 2)
         for rect in rects:                         # 2) lighter inner line
             pygame.draw.rect(surf, WALL_INNER, rect.inflate(-2 * o, -2 * o),
-                            border_radius=max(1, t // 2 - o))
+                             border_radius=max(1, t // 2 - o))
         for rect in rects:                         # 3) black core
             pygame.draw.rect(surf, BG_COLOR, rect.inflate(-4 * o, -4 * o),
-                            border_radius=max(1, t // 2 - 2 * o))
+                             border_radius=max(1, t // 2 - 2 * o))
 
         for x, y in level.pattern_cells:
             surf.fill(PATTERN_FILL, (pad + x * cw, pad + y * ch, cw, ch))
@@ -269,7 +269,7 @@ class GameScreen(Screen):
         surface.blit(self.maze_surface,
                     (self.origin[0] - self.maze_pad,
                     self.origin[1] - self.maze_pad))
-        self.draw_pacgums(surface)
+        # self.draw_pacgums(surface)
         self.draw_hud(surface)
 
     def collect_at(self, x: int, y: int) -> None:
