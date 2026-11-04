@@ -1,34 +1,35 @@
+from __future__ import annotations
 from collections import deque
 from typing import Tuple, List
-from levels import Level, NORTH, EAST, WEST, SOUTH
+from back_end_logic import Direction
 
 
 # ============= checks if next cell is valid ============
-def valid_path(current: Tuple[int, int], next: Tuple[int, int],
+def valid_path(current: Tuple[int, int], nextt: Tuple[int, int],
                level: Level) -> bool:
     x, y = current
 
-    if next in level.neighbors(x, y):
+    if nextt in level.neighbors(x, y):
         return True
     return False
 
 
 # ===== check if the next move is valid using valid path ======
-def valid_move(current: Tuple[int, int], move: int,
+def valid_move(current: Tuple[int, int], move: Direction,
                level: Level):
     x, y = current
-    if move == NORTH:
+    if move == Direction.UP:
         if valid_path(current, (x, y - 1), level):
             return (x, y - 1)
-    if move == EAST:
+    if move == Direction.RIGHT:
         if valid_path(current, (x + 1, y), level):
             return (x + 1, y)
-    if move == SOUTH:
+    if move == Direction.DOWN:
         if valid_path(current, (x, y + 1), level):
             return (x, y + 1)
-    if move == WEST:
+    if move == Direction.LEFT:
         if valid_path(current, (x - 1, y), level):
-            return (x - 1,)
+            return (x - 1, y)
     return current
 
 
@@ -81,7 +82,7 @@ class TestLevel:
 
 level = TestLevel()
 
-print("Test 1:", valid_move((0, 0), NORTH, level))
-print("Test 2:", valid_move((0, 0), EAST, level))
-print("Test 3:", valid_move((0, 0), SOUTH, level))
-print("Test 4:", valid_move((0, 0), WEST, level))
+# print("Test 1:", valid_move((0, 0), NORTH, level))
+# print("Test 2:", valid_move((0, 0), EAST, level))
+# print("Test 3:", valid_move((0, 0), SOUTH, level))
+# print("Test 4:", valid_move((0, 0), WEST, level))

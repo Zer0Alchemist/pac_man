@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum, auto
+from back_end_logic import Player, Ghost
 import mazegenerator
+from back_end_logic import Direction, PLAYER_SPEED
+from backend import valid_move, path_to_player
 
 
 NORTH, EAST, SOUTH, WEST = 1, 2, 4, 8
@@ -55,13 +58,16 @@ class Level:
         self.edible_time = 0.0
 
         # the player starts in the middle, the ghosts will start in the corners
-        self.start = self.nearest_open(self.cols // 2, self.rows // 2)
         self.corners = [
-            self.nearest_open(x, y)
-            for x, y in ((0, 0), (self.cols - 1, 0),
-                         (0, self.rows - 1),
-                         (self.cols - 1, self.rows - 1))
-        ]
+                    self.nearest_open(x, y)
+                    for x, y in ((0, 0), (self.cols - 1, 0),
+                                 (0, self.rows - 1),
+                                 (self.cols - 1, self.rows - 1))
+                ]
+        self.start = self.nearest_open(self.cols // 2, self.rows // 2)
+        self.player = Player(self.start)
+        self.blinky = Ghost("blinky", self.corners[1])
+        self.pinky = Ghost("pinky", self.corners[0])
 
         # only cells the player can really walk to get a pacgum,
         # otherwise a level could be impossible to finish
@@ -139,14 +145,129 @@ class Level:
         return None
 
     # keep reset_timer() and respawn_entities() as they are
-    
+
     def reset_timer(self) -> None:
             self.time_left = self.max_time
-    
+
     def respawn_entities(self) -> None:
         """Put the player and ghosts back at their start. Keep the pacgums."""
 
     def update(self, dt: float, session: Session) -> Result:
+        if self.player.target is None:
+            if self.player.wanted == Direction.UP:
+                next_cell = valid_move(self.player.cell, Direction.UP, self)
+
+                if next_cell != self.player.cell:
+                    self.player.target = next_cell
+                    self.player.facing = "up"
+            elif self.player.wanted == Direction.RIGHT:
+                next_cell = valid_move(self.player.cell, Direction.RIGHT, self)
+
+                if next_cell != self.player.cell:
+                    self.player.target = next_cell
+                    self.player.facing = "right"
+            elif self.player.wanted == Direction.DOWN:
+                next_cell = valid_move(self.player.cell, Direction.DOWN, self)
+
+                if next_cell != self.player.cell:
+                    self.player.target = next_cell
+                    self.player.facing = "down"
+            elif self.player.wanted == Direction.LEFT:
+                next_cell = valid_move(self.player.cell, Direction.LEFT, self)
+
+                if next_cell != self.player.cell:
+                    self.player.target = next_cell
+                    self.player.facing = "left"
+
+        if self.player.target is not None:
+            self.player.progress += self.player.speed * dt
+
+            if self.player.progress >= 1.0:
+                self.player.cell = self.player.target
+                self.player.target = None
+                self.player.progress = 0.0
+
+        if self.blinky.target is None:
+            next_cell = path_to_player(self.blinky.cell, self.player.cell,
+                                       self)
+            if len(next_cell) > 1:
+                self.blinky.target = next_cell[1]
+
+        if self.blinky.target is not None:
+            self.blinky.progress += self.blinky.speed * dt
+
+            if self.blinky.progress >= 1.0:
+                self.blinky.cell = self.blinky.target
+                self.blinky.target = None
+                self.blinky.progress = 0.0
+
+        if self.pinky.target is None:
+            p_x, p_y = self.player.cell
+            if self.player.facing == "up":
+                next_cell = next_cell = path_to_player(self.pinky.cell,
+                                                       (p_x, p_y - 3), self)
+                if not next_cell:
+                    next_cell = path_to_player(self.pinky.cell,
+                                               (p_x, p_y - 2), self)
+                    if not next_cell:
+                        next_cell = path_to_player(self.pinky.cell,
+                                                   (p_x, p_y - 1), self)
+                        if not next_cell:
+                            next_cell = path_to_player(self.pinky.cell,
+                                                       (p_x, p_y), self)
+                if len(next_cell) > 1:
+                    self.pinky.target = next_cell[1]
+            if self.player.facing == "right":
+                next_cell = next_cell = path_to_player(self.pinky.cell,
+                                                       (p_x + 3, p_y), self)
+                if not next_cell:
+                    next_cell = path_to_player(self.pinky.cell,
+                                               (p_x + 2, p_y), self)
+                    if not next_cell:
+                        next_cell = path_to_player(self.pinky.cell,
+                                                   (p_x + 1, p_y), self)
+                        if not next_cell:
+                            next_cell = path_to_player(self.pinky.cell,
+                                                       (p_x, p_y), self)
+                if len(next_cell) > 1:
+                    self.pinky.target = next_cell[1]
+            if self.player.facing == "down":
+                next_cell = next_cell = path_to_player(self.pinky.cell,
+                                                       (p_x, p_y + 3), self)
+                if not next_cell:
+                    next_cell = path_to_player(self.pinky.cell,
+                                               (p_x, p_y + 2), self)
+                    if not next_cell:
+                        next_cell = path_to_player(self.pinky.cell,
+                                                   (p_x, p_y + 1), self)
+                        if not next_cell:
+                            next_cell = path_to_player(self.pinky.cell,
+                                                       (p_x, p_y), self)
+                if len(next_cell) > 1:
+                    self.pinky.target = next_cell[1]
+            if self.player.facing == "left":
+                next_cell = next_cell = path_to_player(self.pinky.cell,
+                                                       (p_x - 3, p_y), self)
+                if not next_cell:
+                    next_cell = path_to_player(self.pinky.cell,
+                                               (p_x - 2, p_y), self)
+                    if not next_cell:
+                        next_cell = path_to_player(self.pinky.cell,
+                                                   (p_x - 1, p_y), self)
+                        if not next_cell:
+                            next_cell = path_to_player(self.pinky.cell,
+                                                       (p_x, p_y), self)
+                if len(next_cell) > 1:
+                    self.pinky.target = next_cell[1]
+
+        if self.pinky.target is not None:
+            self.pinky.progress += self.pinky.speed * dt
+
+            if self.pinky.progress >= 1.0:
+                self.pinky.cell = self.pinky.target
+                self.pinky.target = None
+                self.pinky.progress = 0.0
+
         self.time_left -= dt
         self.edible_time = max(0.0, self.edible_time - dt)
         if self.pacgums_left == 0:
