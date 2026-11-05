@@ -221,7 +221,6 @@ class MainMenu(Screen):
 
     def draw_image(self , screen : pygame.Surface) :
         screen.blit(self.title , (self.x_image , self.y_image))
-        print(self.image_height)
 
 
     def handle_event(self , event) ->Optional[State]:
