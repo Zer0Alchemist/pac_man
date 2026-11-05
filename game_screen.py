@@ -1,9 +1,8 @@
 from screens import Screen , State
 import pygame
 from typing import Optional
-from levels import Session, Level, Result, EAST, NORTH, SOUTH, WEST, Level, Result, Session
+from levels import Session , Level , Result, EAST, NORTH, SOUTH, WEST, Level, Result, Session
 from maze_loader import MazeError
-from back_end_logic import Direction
 
 
 BG_COLOR = (0, 0, 0)
@@ -20,8 +19,6 @@ MARGIN = 10
 Edge = tuple[str, int, int]
 
 
-PATTERN_SCALE = 0.6      # 1.0 = fills its cells, lower = smaller 42
-
 def collect_edges(level: Level) -> tuple[set[Edge], set[Edge]]:
     """Return (normal wall edges, outline edges of the 42)."""
     walls: set[Edge] = set()
@@ -31,9 +28,7 @@ def collect_edges(level: Level) -> tuple[set[Edge], set[Edge]]:
     for y, row in enumerate(level.maze):
         for x, value in enumerate(row):
             if (x, y) in pattern:
-
-    # only the border of the 42 is drawn, not the inside
-
+                # only the border of the 42 is drawn, not the inside
                 if (x, y - 1) not in pattern:
                     outline.add(("h", x, y))
                 if (x, y + 1) not in pattern:
@@ -66,30 +61,12 @@ def edge_rect(edge: Edge, cw: int, ch: int, pad: int,
         return pygame.Rect(px - half, py - half, cw + thickness, thickness)
     return pygame.Rect(px - half, py - half, thickness, ch + thickness)
 
-
 class GameScreen(Screen):
     HUD_TOP = 70
     HUD_BOTTOM = 56
 
-    def __init__(self, size: tuple[int, int], config: dict,
-                 maze_loader) -> None:
+    def __init__(self, size: tuple[int, int], config : dict , maze_loader) -> None:
         self.size = size
-        self.pacman_faces = [
-            pygame.image.load("assets/pac_man_assets/pacs_png/pac_up.png"),
-            pygame.image.load("assets/pac_man_assets/pacs_png/pac_right.png"),
-            pygame.image.load("assets/pac_man_assets/pacs_png/pac_down.png"),
-            pygame.image.load("assets/pac_man_assets/pacs_png/pac_left.png")
-        ]
-        self.pacman_dirs = {
-            "up": pygame.transform.smoothscale(self.pacman_faces[0], (50, 50)),
-            "right": pygame.transform.smoothscale(self.pacman_faces[1], (50, 50)),
-            "down": pygame.transform.smoothscale(self.pacman_faces[2], (50, 50)),
-            "left": pygame.transform.smoothscale(self.pacman_faces[3], (50, 50))
-        }
-        self.blinky = pygame.image.load("assets/pac_man_assets/ghosts_png/blinky.png")
-        self.blinky_scale = pygame.transform.smoothscale(self.blinky, (50, 50))
-        self.pinky = pygame.image.load("assets/pac_man_assets/ghosts_png/pinky.png")
-        self.pinky_scale = pygame.transform.smoothscale(self.pinky, (50, 50))
         self.config = config
         self.maze_loader = maze_loader
         self.session = Session(lives=config["lives"])
@@ -106,10 +83,8 @@ class GameScreen(Screen):
         return pygame.Rect(MARGIN, self.HUD_TOP + MARGIN,
                         width - 2 * MARGIN,
                         height - self.HUD_TOP - self.HUD_BOTTOM - 2 * MARGIN)
-
-
-
-        # ---------- level flow ----------
+    
+    # ---------- level flow ----------
 
     def build_level(self) -> Level:
         index = self.session.level_index
@@ -139,24 +114,10 @@ class GameScreen(Screen):
             self.level.reset_timer()
         return None
 
-
-
-        # ---------- Screen interface ----------
+    # ---------- Screen interface ----------
 
     def handle_event(self, event: pygame.event.Event) -> Optional[State]:
         if event.type != pygame.KEYDOWN:
-            return None
-        if event.key == pygame.K_DOWN:
-            self.level.player.wanted = Direction.DOWN
-            return None
-        if event.key == pygame.K_UP:
-            self.level.player.wanted = Direction.UP
-            return None
-        if event.key == pygame.K_LEFT:
-            self.level.player.wanted = Direction.LEFT
-            return None
-        if event.key == pygame.K_RIGHT:
-            self.level.player.wanted = Direction.RIGHT
             return None
         if event.key == pygame.K_ESCAPE:
             return State.MENU              # later: open the pause menu
@@ -196,8 +157,8 @@ class GameScreen(Screen):
 
     def render_maze(self, level: Level) -> pygame.Surface:
         area = self.maze_area()
-        cw = ch = max(8, min(area.width // level.cols,
-                             area.height // level.rows))
+        cw = max(8, area.width // level.cols)
+        ch = max(8, area.height // level.rows)
         t = max(6, min(cw, ch) // 5 // 2 * 2)     # wall thickness (even number)
         o = max(1, t // 6)
         pad = t // 2 + 1
@@ -210,18 +171,20 @@ class GameScreen(Screen):
         surf = pygame.Surface((cw * level.cols + 2 * pad,
                             ch * level.rows + 2 * pad))
         surf.fill(BG_COLOR)
-
         walls, outline = collect_edges(level)
+
+        # t = max(6, min(cw, ch) // 5 // 2 * 2)     # use `cell` in the square version
+        # o = max(1, t // 6)
         rects = [edge_rect(edge, cw, ch, pad, t) for edge in walls]
 
         for rect in rects:                         # 1) outer dark blue
             pygame.draw.rect(surf, WALL_OUTER, rect, border_radius=t // 2)
         for rect in rects:                         # 2) lighter inner line
             pygame.draw.rect(surf, WALL_INNER, rect.inflate(-2 * o, -2 * o),
-                             border_radius=max(1, t // 2 - o))
+                            border_radius=max(1, t // 2 - o))
         for rect in rects:                         # 3) black core
             pygame.draw.rect(surf, BG_COLOR, rect.inflate(-4 * o, -4 * o),
-                             border_radius=max(1, t // 2 - 2 * o))
+                            border_radius=max(1, t // 2 - 2 * o))
 
         for x, y in level.pattern_cells:
             surf.fill(PATTERN_FILL, (pad + x * cw, pad + y * ch, cw, ch))
@@ -229,7 +192,7 @@ class GameScreen(Screen):
         for edge in outline:
             surf.fill(PATTERN_COLOR, edge_rect(edge, cw, ch, pad, line))
         return surf
-
+    
     def draw_stat(
     self,
     surface: pygame.Surface,
@@ -246,7 +209,7 @@ class GameScreen(Screen):
 
         surface.blit(label_img, label_rect)
         surface.blit(value_img, value_rect)
-
+    
     def draw_life_icon(self, surface: pygame.Surface,
                     center: tuple[int, int], radius: int) -> None:
         """Small Pac-Man facing right: a yellow disc with a mouth wedge."""
@@ -299,30 +262,12 @@ class GameScreen(Screen):
             f"LEVEL {s.level_index + 1}/{total_levels}", True, TEXT_WHITE)
         surface.blit(level_text, level_text.get_rect(midright=(width - 30, y)))
 
-    def return_place(self, x, y):
-        return (
-            self.origin[0] + (x + 0.5) * self.cell_w - 50 // 2,
-            self.origin[1] + (y + 0.5) * self.cell_h - 50 // 2
-        )
-
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(BG_COLOR)                      # this line clears the menu
         surface.blit(self.maze_surface,
                     (self.origin[0] - self.maze_pad,
                     self.origin[1] - self.maze_pad))
-        pac_dir = self.level.player.facing
-        pac_x, pac_y = self.return_place(self.level.player.cell[0],
-                                          self.level.player.cell[1])
-        blinky_x, blinky_y = self.return_place(self.level.blinky.cell[0],
-                                               self.level.blinky.cell[1])
-        pinky_x, pinky_y = self.return_place(self.level.pinky.cell[0],
-                                             self.level.pinky.cell[1])
-        # y = self.origin[1] + (self.level.player.cell[1] + 0.5) * self.cell_h - 50 // 2
-        # x, y = self.cell_center(self.level.player.cell[0], self.level.player.cell[1])
-        surface.blit(self.pacman_dirs[pac_dir], (pac_x, pac_y))
-        surface.blit(self.blinky_scale, (blinky_x, blinky_y))
-        surface.blit(self.pinky_scale, (pinky_x, pinky_y))
-        # self.draw_pacgums(surface)
+        self.draw_pacgums(surface)
         self.draw_hud(surface)
 
     def collect_at(self, x: int, y: int) -> None:
@@ -346,3 +291,4 @@ class GameScreen(Screen):
             for x, y in self.level.super_pacgums:
                 pygame.draw.circle(surface, PACGUM_COLOR,
                                 self.cell_center(x, y), max(4, unit // 4))
+
