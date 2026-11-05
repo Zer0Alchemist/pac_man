@@ -42,7 +42,6 @@ class Player(Entity):
         super().__init__(start, PLAYER_SPEED)
         self.wanted: Optional[Direction] = None   # last key pressed
         self.speed_multiplier = 1.0               # changed by the cheat mode
-        self.facing = "up"
 
 
 class Ghost(Entity):
