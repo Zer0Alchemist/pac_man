@@ -1,0 +1,387 @@
+import pygame
+from pathlib import Path
+pygame.init()
+
+from game_screen import State
+
+WIDTH , HEIGHT = (1400 , 900)
+
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("BIT MAP FONT")
+
+
+
+bitmap_A = [
+      "01110",
+      "10001",
+      "10001",
+      "11111",
+      "10001",
+      "10001",
+      "10001"
+]
+
+bitmap_S = [
+    "01111",
+    "10000",
+    "10000",
+    "01110",
+    "00001",
+    "00001",
+    "11110"
+]
+
+
+
+# 5x7 font: 7 rows per glyph, 5 bits per row, leftmost pixel = highest bit
+GLYPHS: dict[str, tuple[int, ...]] = {
+    " ": (0, 0, 0, 0, 0, 0, 0),
+    "A": (0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11),
+    "B": (0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E),
+    "C": (0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E),
+    "D": (0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E),
+    "E": (0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F),
+    "F": (0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10),
+    "G": (0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0F),
+    "H": (0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11),
+    "I": (0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E),
+    "J": (0x07, 0x02, 0x02, 0x02, 0x02, 0x12, 0x0C),
+    "K": (0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11),
+    "L": (0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F),
+    "M": (0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11),
+    "N": (0x11, 0x11, 0x19, 0x15, 0x13, 0x11, 0x11),
+    "O": (0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E),
+    "P": (0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10),
+    "Q": (0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D),
+    "R": (0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11),
+
+    "S": (0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E),
+
+    "T": (0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04),
+    "U": (0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E),
+    "V": (0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04),
+    "W": (0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A),
+    "X": (0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11),
+    "Y": (0x11, 0x11, 0x11, 0x0A, 0x04, 0x04, 0x04),
+    "Z": (0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F),
+    "0": (0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E),
+    "1": (0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E),
+    "2": (0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F),
+    "3": (0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E),
+    "4": (0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02),
+    "5": (0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E),
+    "6": (0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E),
+    "7": (0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08),
+    "8": (0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E),
+    "9": (0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C),
+    ":": (0x00, 0x0C, 0x0C, 0x00, 0x0C, 0x0C, 0x00),
+    "/": (0x01, 0x01, 0x02, 0x04, 0x08, 0x10, 0x10),
+    "-": (0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00),
+    ".": (0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x0C),
+    ",": (0x00, 0x00, 0x00, 0x00, 0x0C, 0x04, 0x08),
+    "!": (0x04, 0x04, 0x04, 0x04, 0x04, 0x00, 0x04),
+    "?": (0x0E, 0x11, 0x01, 0x02, 0x04, 0x00, 0x04),
+    ">": (0x10, 0x08, 0x04, 0x02, 0x04, 0x08, 0x10),
+    "<": (0x01, 0x02, 0x04, 0x08, 0x04, 0x02, 0x01),
+    "_": (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F),
+}
+GLYPH_W, GLYPH_H = 5, 7
+
+bitmap = [
+    "010",
+    "101",
+    "111",
+    "101",
+    "101",
+]
+
+
+
+
+def draw_pixel_block(x , y , color , scale) :
+    for block_y in range(scale):
+        for block_x in range(scale):
+            screen.set_at((x + block_x , y + block_y ) , color)
+
+
+def draw_char(glyph, x, y, scale, color):
+    for row_index, row_data in enumerate(glyph):
+
+        for col_index in range(GLYPH_W):
+            bit_position = GLYPH_W - 1 - col_index
+            pixel = ( row_data >> bit_position ) & 1
+            if pixel == 1:
+
+                pixel_x = x + col_index * scale
+                pixel_y = y + row_index * scale
+
+                draw_pixel_block(
+                    pixel_x,
+                    pixel_y,
+                    color,
+                    scale
+                )
+
+
+def get_text_width(text , scale) -> int:
+    return len(text) * ( GLYPH_W * scale ) + (scale * (len(text) - 1 ))
+  
+
+def draw_centered_text(text , y , color , scale):
+    starting_x =  (WIDTH - get_text_width(text , scale)) // 2
+    draw_text(text , starting_x , y , scale , color)
+
+def draw_text(text , x , y , scale , color) :
+    for ch in text :
+        bit_map = GLYPHS.get(ch.upper() , None)
+        if bit_map is not None :
+            draw_char(bit_map , x , y , scale , color)
+        x += (GLYPH_W + 1) * scale  
+
+running = True
+
+
+labels = [
+    "START GAME",
+    "VIEW HIGHSCORES",
+    "INSTRUCTIONS",
+    "EXIT"
+]
+
+help = "UP / DOWN: SELECT     ENTER: CONFIRM"
+
+option_y = [200, 300, 400, 500]
+
+selected = 0
+
+# option_spacing = HEIGHT // (len(labels) + 1)
+spacing = HEIGHT * 0.09
+start_y = HEIGHT * 0.34
+
+TITLE_PATH = (Path(__file__).parent / "assets" / "pac_man_title"
+                  / "pac_man_title_transparent.png")
+
+title_image = pygame.image.load(TITLE_PATH)
+
+image_width = title_image.get_width()
+
+x_image , y_image = (WIDTH - image_width) // 2 , 30
+
+title_rect = title_image.get_rect(
+    midtop=(screen.get_width() // 2, 20)
+)
+
+def draw_image() :
+    screen.blit(title_image , (x_image , y_image))
+
+while (running) :
+
+    screen.fill((244, 164, 96))
+    draw_image()
+    for index , label in enumerate(labels) :
+        y = int(start_y + index * spacing)
+        color = "white"
+        if index == selected :
+            color = "yellow"
+            label = f">  {label}  <"
+
+        draw_centered_text(label , y , color , 5)
+
+    draw_centered_text(help , 700 , "black" , 2)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN :
+            if event.key == pygame.K_UP :
+                selected = (selected - 1) % len(labels)
+            if event.key == pygame.K_DOWN :
+                selected = (selected + 1) % len(labels)
+
+
+    # draw_char(bitmap_A , 100 , 100 , 5 , "black")
+    # draw_char(bitmap_S , 130 , 100 , 5 , "black")
+    # draw_text("ABC" , 100 , 100 , 15 , "black")
+    # draw_centered_text("ABC" , 100 , "black" , 5)
+    # draw_text("START GAME" , 100 , 100 , 5 , "black")
+    # draw_text("VIEW HIGHSCORES" , 100 , 200 , 5 , "black")
+    # draw_text("INSTRUCTIONS" , 100 , 300 , 5 , "black")
+    # draw_text("EXIT" , 100 , 400 , 5 , "black")
+
+
+    pygame.display.flip()
+
+
+
+
+pygame.quit()
+
+
+
+
+class Bit_map_font :
+
+    # 5x7 font: 7 rows per glyph, 5 bits per row, leftmost pixel = highest bit
+    GLYPHS: dict[str, tuple[int, ...]] = {
+        " ": (0, 0, 0, 0, 0, 0, 0),
+        "A": (0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11),
+        "B": (0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E),
+        "C": (0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E),
+        "D": (0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E),
+        "E": (0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F),
+        "F": (0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10),
+        "G": (0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0F),
+        "H": (0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11),
+        "I": (0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E),
+        "J": (0x07, 0x02, 0x02, 0x02, 0x02, 0x12, 0x0C),
+        "K": (0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11),
+        "L": (0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F),
+        "M": (0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11),
+        "N": (0x11, 0x11, 0x19, 0x15, 0x13, 0x11, 0x11),
+        "O": (0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E),
+        "P": (0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10),
+        "Q": (0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D),
+        "R": (0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11),
+
+        "S": (0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E),
+
+        "T": (0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04),
+        "U": (0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E),
+        "V": (0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04),
+        "W": (0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A),
+        "X": (0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11),
+        "Y": (0x11, 0x11, 0x11, 0x0A, 0x04, 0x04, 0x04),
+        "Z": (0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F),
+        "0": (0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E),
+        "1": (0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E),
+        "2": (0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F),
+        "3": (0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E),
+        "4": (0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02),
+        "5": (0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E),
+        "6": (0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E),
+        "7": (0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08),
+        "8": (0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E),
+        "9": (0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C),
+        ":": (0x00, 0x0C, 0x0C, 0x00, 0x0C, 0x0C, 0x00),
+        "/": (0x01, 0x01, 0x02, 0x04, 0x08, 0x10, 0x10),
+        "-": (0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00),
+        ".": (0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x0C),
+        ",": (0x00, 0x00, 0x00, 0x00, 0x0C, 0x04, 0x08),
+        "!": (0x04, 0x04, 0x04, 0x04, 0x04, 0x00, 0x04),
+        "?": (0x0E, 0x11, 0x01, 0x02, 0x04, 0x00, 0x04),
+        ">": (0x10, 0x08, 0x04, 0x02, 0x04, 0x08, 0x10),
+        "<": (0x01, 0x02, 0x04, 0x08, 0x04, 0x02, 0x01),
+        "_": (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F),
+    }
+    GLYPH_W, GLYPH_H = 5, 7
+
+
+
+    def __draw_pixel_block(self,x , y , color , scale) :
+        for block_y in range(scale):
+            for block_x in range(scale):
+                screen.set_at((x + block_x , y + block_y ) , color)
+
+
+    def __draw_char(self,glyph, x, y, scale, color):
+        for row_index, row_data in enumerate(glyph):
+
+            for col_index in range(GLYPH_W):
+                bit_position = GLYPH_W - 1 - col_index
+                pixel = ( row_data >> bit_position ) & 1
+                if pixel == 1:
+
+                    pixel_x = x + col_index * scale
+                    pixel_y = y + row_index * scale
+
+                    draw_pixel_block(
+                        pixel_x,
+                        pixel_y,
+                        color,
+                        scale
+                    )
+
+
+    def __get_text_width(self,text , scale) -> int:
+        return len(text) * ( GLYPH_W * scale ) + (scale * (len(text) - 1 ))
+
+    def __draw_text(self , text , x , y , scale , color) :
+        for ch in text :
+            bit_map = GLYPHS.get(ch.upper() , None)
+            if bit_map is not None :
+                draw_char(bit_map , x , y , scale , color)
+            x += (GLYPH_W + 1) * scale  
+
+    def draw_centered_text(self , text , y , color , scale):
+            starting_x =  (WIDTH - get_text_width(text , scale)) // 2
+            self.__draw_text(text , starting_x , y , scale , color)
+
+
+class Menu :
+
+    BACKGROUND = (244, 164, 96) # lemmon clr
+    YELLOW = (255, 210, 40) # yellow clr
+    WHITE = (255, 255, 255) # white clr
+    HELP_COLOR = (100, 55, 20) # help clr
+
+    TITLE_PATH = (Path(__file__).parent / "assets" / "pac_man_title"
+                      / "pac_man_title_transparent.png")
+
+    
+
+    OPTIONS = [
+            ("Start Game", State.PLAYING),
+            ("View Highscores", State.HIGHSCORES),
+            ("Instructions", State.INSTRUCTIONS),
+            ("Exit", State.EXIT),
+        ]
+
+    labels = [
+        "START GAME",
+        "VIEW HIGHSCORES",
+        "INSTRUCTIONS",
+        "EXIT"
+        ]
+
+    def __init__(self , size):
+        self.width , self.height = size
+        self.selected = 0
+        self.font = Bit_map_font()
+
+        self.title = pygame.image.load(TITLE_PATH)
+        self.image_width = self.title.get_width()
+        self.x_image , self.y_image = (WIDTH - image_width) // 2 , 20
+
+
+    def draw_image(self , screen : pygame.Surface) :
+        screen.blit(self.title , (self.x_image , self.y_image))
+
+
+    def handle_event(self , event):
+        if event.type != pygame.KEYDOWN :
+            return None
+        
+        elif event.key == pygame.K_UP :
+            selected = (selected - 1) % len(self.OPTIONS)
+        elif event.key == pygame.K_DOWN :
+            selected = (selected + 1) % len(self.OPTIONS)
+        elif event.key == pygame.K_RETURN :
+            return self.OPTIONS[selected][1]
+        elif event.key == pygame.K_ESCAPE:
+                    return State.EXIT
+        return None
+
+    def draw(self , screen : pygame.Surface):
+        draw_image(screen)
+        screen.fill(self.BACKGROUND)
+        for index , label in enumerate(self.labels):
+            y = int(start_y + index * spacing)
+            color = "white"
+            if index == selected :
+                color = "yellow"
+                label = f">  {label}  <"
+    
+            self.font.draw_centered_text(label , y , color , 5)
+    
+        draw_centered_text(help , 700 , "black" , 2)
