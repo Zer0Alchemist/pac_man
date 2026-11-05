@@ -55,7 +55,8 @@ class Level:
         self.edible_time = 0.0
 
         # the player starts in the middle, the ghosts will start in the corners
-        self.start = self.nearest_open(self.cols // 2, self.rows // 2)
+        # self.start = self.nearest_open(self.cols // 2, self.rows // 2)
+        self.start = self.find_start()
         self.corners = [
             self.nearest_open(x, y)
             for x, y in ((0, 0), (self.cols - 1, 0),
@@ -100,6 +101,26 @@ class Level:
                     seen.add(nxt)
                     queue.append(nxt)
         return seen
+
+    def find_start(self) -> Cell:
+        """Open cell closest to the middle of the maze.
+
+        Dead ends (cells with a single exit, like the notches of the 4 and
+        the 2) cost extra, so the player starts in a real corridor.
+        """
+        mx, my = self.cols // 2, self.rows // 2
+        candidates = [(x, y) for y in range(self.rows) for x in range(self.cols)
+                    if (x, y) not in self.pattern_cells]
+        if not candidates:
+            return mx, my
+
+        def cost(cell: Cell) -> tuple[int, int]:
+            x, y = cell
+            exits = len(self.neighbors(x, y))
+            distance = abs(x - mx) + abs(y - my)
+            return (distance + (2 if exits < 2 else 0), -exits)
+
+        return min(candidates, key=cost)
 
     def nearest_open(self, x: int, y: int) -> Cell:
         """Closest cell to (x, y) that is not part of the 42."""
